@@ -307,7 +307,7 @@ void app_main(void)
         // Draw 50×50 checkerboard: black squares on color background
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (((x / 50) + (y / 50)) % 2) {
+                if (((x / 10) + (y / 10)) % 2) {
                     pixels[y * width + x] = 0x0000; // black square
                 } else {
                     pixels[y * width + x] = color; // background color
