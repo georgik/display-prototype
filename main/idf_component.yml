@@ -1,7 +1,4 @@
 description: BSP Display example
 
 dependencies:
-  esp32_p4_function_ev_board:
-    version: '*'
-    override_path: ../../../bsp/esp32_p4_function_ev_board
   espressif/console_simple_init: ^1.1.0

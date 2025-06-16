@@ -5,8 +5,6 @@
  */
 
 #include <stdio.h>
-
-#include "lvgl.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
@@ -128,9 +126,9 @@ esp_err_t bsp_display_brightness_deinit(void);
 
 esp_err_t bsp_display_brightness_set(int brightness_percent);
 
-esp_err_t bsp_display_backlight_on(void);
+//esp_err_t bsp_display_backlight_on(void);
 
-esp_err_t bsp_display_backlight_off(void);
+//esp_err_t bsp_display_backlight_off(void);
 
 
 
@@ -279,7 +277,7 @@ void app_main(void)
     cfg.dsi_bus.lane_bit_rate_mbps = custom_bitrate;
     ESP_LOGI(TAG, "DSI lane bit rate after override: %u Mbps", cfg.dsi_bus.lane_bit_rate_mbps);
 
-    bsp_display_backlight_on();
+//    bsp_display_backlight_on();
 
     // --- manual DSI + DPI panel init (in place of BSP helper) ---
     // 1) Create DSI bus
