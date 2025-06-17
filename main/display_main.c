@@ -9,10 +9,27 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_lcd_types.h"
+#include "esp_lcd_mipi_dsi.h"
+#include "sdkconfig.h"
+
+
+static SemaphoreHandle_t s_dma_done_sem;
+
+static bool IRAM_ATTR lcd_dma_done_cb(esp_lcd_panel_handle_t panel,
+                                      esp_lcd_dpi_panel_event_data_t *edata,
+                                      void *user_ctx)
+{
+    BaseType_t high_task_woken = pdFALSE;
+    xSemaphoreGiveFromISR(s_dma_done_sem, &high_task_woken);
+    return (high_task_woken == pdTRUE);
+}
 #include "esp_lcd_mipi_dsi.h"
 
 #include "esp_lcd_panel_interface.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_lcd_panel_io.h"
 
 #define BSP_LCD_BACKLIGHT 21  // default backlight GPIO; adjust if needed
 #define BSP_LCD_RST 27
@@ -240,6 +257,7 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_dbi(mipi_dsi_bus, &dbi_config, &io));
 
+
     // 3) Inline DPI config (expanded from ILI9881C_800_1280_PANEL_60HZ_DPI_CONFIG)
     esp_lcd_dpi_panel_config_t dpi_config =
     {                                                      \
@@ -281,6 +299,15 @@ void app_main(void)
     esp_lcd_panel_handle_t panel = NULL;
     ESP_ERROR_CHECK(esp_lcd_new_panel_ili9881c(io, &panel_dev_config, &panel));
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
+    // Register DMA completion callback for DSI video-mode transfers
+    esp_lcd_dpi_panel_event_callbacks_t dpi_cbs = {
+        .on_color_trans_done = lcd_dma_done_cb,
+    };
+    ESP_ERROR_CHECK(esp_lcd_dpi_panel_register_event_callbacks(panel, &dpi_cbs, NULL));
+
+    // Create semaphore to wait for DMA-driven frame transfers
+    s_dma_done_sem = xSemaphoreCreateBinary();
+    assert(s_dma_done_sem);
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
     // --- end manual init ---
 
@@ -316,6 +343,8 @@ void app_main(void)
         }
         // Push entire frame buffer to the display
         ESP_ERROR_CHECK(esp_lcd_panel_draw_bitmap(panel, 0, 0, width, height, fb0));
+        // Wait for the DMA-driven transfer to finish before continuing
+        xSemaphoreTake(s_dma_done_sem, portMAX_DELAY);
         // Wait before rotating to the next color
         vTaskDelay(pdMS_TO_TICKS(1000));
         // Advance to next color
